@@ -9,9 +9,6 @@
 
 CC=gcc
 
-OBJS1=snmpdemoapp.o
-OBJS2=example-demon.o nstAgentSubagentObject.o
-OBJS3=asyncapp.o
 OBJS4=snmpmanager.o
 OBJS5=snmpmanager.o snmpmanager
 TARGETS=example-demon snmpdemoapp asyncapp
@@ -19,7 +16,7 @@ TARGETS=example-demon snmpdemoapp asyncapp
 CFLAGS=-I. `net-snmp-config --cflags`
 BUILDLIBS=`net-snmp-config --libs`
 BUILDAGENTLIBS=`net-snmp-config --agent-libs`
-
+M=updated
 # shared library flags (assumes gcc)
 DLFLAGS=-fPIC -shared
 
@@ -37,18 +34,10 @@ addlibs:
 snmpmanager: $(OBJS4)
 	$(CC) -o snmpmanager $(OBJS4) $(BUILDLIBS)
 
-snmpdemoapp: $(OBJS1)
-	$(CC) -o snmpdemoapp $(OBJS1) $(BUILDLIBS)
-
-asyncapp: $(OBJS3)
-	$(CC) -o asyncapp $(OBJS3) $(BUILDLIBS)
-
-example-demon: $(OBJS2)
-	$(CC) -o example-demon $(OBJS2)  $(BUILDAGENTLIBS)
+gitmain:
+	git add snmpmanager.c Makefile
+	git commit -m $(M)
+	git push origin main
 
 clean:
 	rm $(OBJS5)
-
-nstAgentPluginObject.so: nstAgentPluginObject.c Makefile
-	$(CC) $(CFLAGS) $(DLFLAGS) -c -o nstAgentPluginObject.o nstAgentPluginObject.c
-	$(CC) $(CFLAGS) $(DLFLAGS) -o nstAgentPluginObject.so nstAgentPluginObject.o

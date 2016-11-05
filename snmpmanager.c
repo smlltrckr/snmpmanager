@@ -9,7 +9,6 @@
 
 // Global Variables
 netsnmp_session session, *ss;
-netsnmp_pdu *pdu;
 netsnmp_pdu *response;
 
 // Function Declarations
@@ -20,6 +19,7 @@ void traffic();
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
 	char *agentIP, *community;
+	netsnmp_pdu *pdu; // Use locally in separate functions
 
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
