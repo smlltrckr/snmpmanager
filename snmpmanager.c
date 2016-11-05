@@ -148,8 +148,11 @@ This function finds the neighbor for each device
 */
 char **deviceNeighbors(char *device){
 	char **neighbors;
-	// char *neighbors = (char *)malloc(MAX_IPV4 * sizeof(char**))
-	//char **neighbors = ( Need to allocate
+
+	neighbors = (char)malloc(MAX_IPV4 * sizeof(char*));
+	*neighbors = (char*) maloc(MAX_IPV4 * sizeof(char**));
+
+
 
 	return neighbors;
 }
