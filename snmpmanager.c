@@ -14,7 +14,9 @@ netsnmp_pdu *response;
 // Function Declarations
 void findDevice();
 char **deviceNeighbors(char *device);
-void traffic();
+void traffic(int timeInterval, int numberOfSamples);
+void printTraffic(int interfaces, long currTraffic[], long prevTraffic[]);
+int getTableData(char *objectName);
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
@@ -24,8 +26,8 @@ int main(int argc, char ** argv){
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
 		// Default Values?
-		timeInterval = 300;
-		numberOfSamples = 30;
+		timeInterval = 100;
+		numberOfSamples = 4;
 		agentIP = "127.0.0.1";
 		community = "public";
 		printf("Default: timeInterval(%d), numberOfSamples(%d), agentIP(%s), community(%s)\n", timeInterval, numberOfSamples, agentIP, community);
@@ -159,8 +161,62 @@ This function finds the rate of traffic on each interface
 	PRE:
 	POST:
 */
-void traffic(int interfaceID){
+void traffic(int timeInterval, int numberOfSamples){
+	int interfaces = getTableData("ifNumber.0"); // Number of interfaces
+	long prevInTraffic[interfaces];
+	long currInTraffic[interfaces];
+	long prevOutTraffic[interfaces];
+	long currOutTraffic[interfaces];
+	time_t startTime, endTime;
+	double timeElapsed;
 
+	memset(currInTraffic, 0, sizeof(currInTraffic) / sizeof(long));
+	memset(prevInTraffic, 0, sizeof(prevInTraffic) / sizeof(long));
+	memset(currOutTraffic, 0, sizeof(currOutTraffic) / sizeof(long));
+	memset(prevOutTraffic, 0, sizeof(prevOutTraffic) / sizeof(long));
+
+	// Inbound Traffic
+	for (int a = 0; a < numberOfSamples; a++)
+	{
+		for (int b = 0; b < interfaces; b++)
+			{
+				// Inbound
+				char *pollInOctect = strcat("ifInOctets.", itoa(b + 1));
+				printf("pollOctect: %s\n", pollInOctect);
+
+				currInTraffic[a] = getTableData(pollInOctect);
+				printf("currInTraffic %d: %ld\n", a, currInTraffic[a]);
+				prevInTraffic[a] = getTableData(pollInOctect);
+				printf("prevInTraffic %d: %ld\n", a, prevInTraffic[a]);
+
+				// Outbound
+				char *pollOutOctect = strcat("ifOutOctets.", itoa(b + 1));
+				printf("pollOutOctect: %s\n", pollOutOctect);
+
+				currOutTraffic[a] = getTableData(pollOutOctect);
+				printf("currOutTraffic %d: %ld\n", a, currOutTraffic[a]);
+				prevOutTraffic[a] = getTableData(pollOutOctect);
+				printf("prevOutTraffic %d: %ld\n", a, prevOutTraffic[a]);
+			}	
+	}
+
+	printTraffic(interfaces, currInTraffic, currOutTraffic);
+	printTraffic(interfaces, currOutTraffic, prevOutTraffic);
+
+	time(&startTime);
+	do
+	{
+		time(&endTime);
+		timeElapsed = difftime(endTime, startTime);
+	} while (timeElapsed < timeInterval);
+}
+/*********************Get Table Data*******************
+This function get data from the table.
+	PRE:
+	POST:
+*/
+int getTableData(char *objectName){
+	
 }
 
 /*********************Print Traffic*******************
@@ -168,4 +224,6 @@ This function prints Traffic in a human readable format
 	PRE:
 	POST:
 */
+void printTraffic(int interfaces, long currTraffic[], long prevTraffic[]){
 
+}
