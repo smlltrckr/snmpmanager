@@ -13,6 +13,7 @@ OBJS1=snmpdemoapp.o
 OBJS2=example-demon.o nstAgentSubagentObject.o
 OBJS3=asyncapp.o
 OBJS4=snmpmanager.o
+OBJS5=snmpmanager.o snmpmanager
 TARGETS=example-demon snmpdemoapp asyncapp
 
 CFLAGS=-I. `net-snmp-config --cflags`
@@ -46,7 +47,7 @@ example-demon: $(OBJS2)
 	$(CC) -o example-demon $(OBJS2)  $(BUILDAGENTLIBS)
 
 clean:
-	rm $(OBJS2) $(OBJS2) $(TARGETS)
+	rm $(OBJS5)
 
 nstAgentPluginObject.so: nstAgentPluginObject.c Makefile
 	$(CC) $(CFLAGS) $(DLFLAGS) -c -o nstAgentPluginObject.o nstAgentPluginObject.c
