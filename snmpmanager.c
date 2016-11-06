@@ -6,9 +6,11 @@
 #include <math.h>
 
 #define MAX_IPV4 15
+#define BUCKET 5
 
 // Global Variables
 netsnmp_session session, *ss;
+netsnmp_pdu *pdu;
 netsnmp_pdu *response;
 
 // Function Declarations
@@ -136,9 +138,13 @@ This function finds a device and returns it to a list
 	PRE:
 	POST:
 */
-void findDevice(){
-	
-	// return 0;
+netsnmp_variable_list *getBulk(){
+	netsnmp_variable_list *var;
+	var = (netsnmp_variable_list*)malloc(BUCKET*sizeof(netsnmp_variable_list));
+
+	pdu = snmp_pdu_create(SNMP_MSG_GET);
+
+	return var;
 }
 
 /********************Find Neighbor*******************
@@ -149,8 +155,8 @@ This function finds the neighbor for each device
 char **deviceNeighbors(char *device){
 	char **neighbors;
 
-	neighbors = (char)malloc(MAX_IPV4 * sizeof(char*));
-	*neighbors = (char*) maloc(MAX_IPV4 * sizeof(char**));
+	neighbors = (char**)malloc(MAX_IPV4 * sizeof(char*));
+	*neighbors = (char*) malloc(MAX_IPV4 * sizeof(char));
 
 
 
