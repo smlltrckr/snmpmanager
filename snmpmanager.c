@@ -216,18 +216,17 @@ void traffic(int timeInterval, int numberOfSamples){
 				printf("prevOutTraffic %d: %ld\n", a, prevOutTraffic[a]);
 
 				// free(buffer);
-			}	
+			}
+		printTraffic(interfaces, currInTraffic, currOutTraffic);
+		printTraffic(interfaces, currOutTraffic, prevOutTraffic);
+
+		time(&startTime);
+		do
+		{
+			time(&endTime);
+			timeElapsed = difftime(endTime, startTime);
+		} while (timeElapsed < timeInterval);
 	}
-
-	printTraffic(interfaces, currInTraffic, currOutTraffic);
-	printTraffic(interfaces, currOutTraffic, prevOutTraffic);
-
-	time(&startTime);
-	do
-	{
-		time(&endTime);
-		timeElapsed = difftime(endTime, startTime);
-	} while (timeElapsed < timeInterval);
 }
 /*********************Get Table Data*******************
 This function gets int data from the table.
