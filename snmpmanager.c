@@ -21,11 +21,10 @@ int getTableData(char *objectName);
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
 	char *agentIP, *community;
-	// netsnmp_pdu *pdu; // Use locally in separate functions
 
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
-		// Default Values?
+		// Default Values
 		timeInterval = 10;
 		numberOfSamples = 4;
 		agentIP = "127.0.0.1";
@@ -37,13 +36,6 @@ int main(int argc, char ** argv){
 		agentIP = argv[3];
 		community = argv[4];
 	}
-
-	// oid anOID[MAX_OID_LEN]; // Here only for  testing Use locally
-	// size_t anOID_len; // Here only for  testing Use locally
-
-	// netsnmp_variable_list *vars;// Here only for  testing Use locally
-	// int status;// Here only for  testing Use locally
-	// int count = 1;// Here only for  testing Use locally
 
 	/* Initializes the SNMP library */
 	init_snmp("snmpmanager");
@@ -69,57 +61,6 @@ int main(int argc, char ** argv){
 		SOCK_CLEANUP;
 		exit(1);
 	}
-
-	// pdu = snmp_pdu_create(SNMP_MSG_GET);
-	// anOID_len = MAX_OID_LEN;
-	// if (!snmp_parse_oid(".1.3.6.1.2.1.1.1.0", anOID, &anOID_len))
-	// {
-	// 	snmp_perror(".1.3.6.1.2.1.1.1.0");
-	// 	SOCK_CLEANUP;
-	// 	exit(1);
-	// }
-
-	// snmp_add_null_var(pdu, anOID, anOID_len);
-
-	/* Send out a request */
-	// status = snmp_synch_response(ss, pdu, &response);
-
-	// //Start test result
-	// if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
- //      /*
- //       * SUCCESS: Print the result variables
- //       */
-
- //      for(vars = response->variables; vars; vars = vars->next_variable)
- //        print_variable(vars->name, vars->name_length, vars);
-
- //      /* manipuate the information ourselves */
- //      for(vars = response->variables; vars; vars = vars->next_variable) {
- //        if (vars->type == ASN_OCTET_STR) {
-	//   char *sp = (char *)malloc(1 + vars->val_len);
-	//   memcpy(sp, vars->val.string, vars->val_len);
-	//   sp[vars->val_len] = '\0';
- //          printf("value #%d is a string: %s\n", count++, sp);
-	//   free(sp);
-	// }
- //        else
- //          printf("value #%d is NOT a string! Ack!\n", count++);
- //      }
- //    } else {
- //      /*
- //       * FAILURE: print what went wrong!
- //       */
-
- //      if (status == STAT_SUCCESS)
- //        fprintf(stderr, "Error in packet\nReason: %s\n",
- //                snmp_errstring(response->errstat));
- //      else if (status == STAT_TIMEOUT)
- //        fprintf(stderr, "Timeout: No response from %s.\n",
- //                session.peername);
- //      else
- //        snmp_sess_perror("snmpdemoapp", ss);
-
- //    }//END test result
 
 	traffic(timeInterval, numberOfSamples);
 
@@ -197,7 +138,9 @@ void traffic(int timeInterval, int numberOfSamples){
 					}
 				}
 			}
-		sleep(timeInterval);
+			if(a != numberOfSamples){
+				sleep(timeInterval);
+			}
 	}
 	return;
 }
