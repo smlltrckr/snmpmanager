@@ -133,20 +133,38 @@ int main(int argc, char ** argv){
 	return 0;
 } // END main()
 
+
 /*********************Find Devices*******************
 This function finds a device and returns it to a list
 	PRE:
 	POST:
 */
-netsnmp_variable_list *getBulk(){
-	netsnmp_variable_list *var;
-	var = (netsnmp_variable_list*)malloc(BUCKET*sizeof(netsnmp_variable_list));
+netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *currOid, size_t oidLength){
+	netsnmp_variable_list *vars;
+	int count = 1;
 
-	pdu = snmp_pdu_create(SNMP_MSG_GET);
+	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
+
+	snmp_add_null_var(pdu, currOID, OIDSize);
+
+	status = snmp_synch_response(ss, pdu, &response);
+	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
+
+	}
+	else{
+		snmp_free_pdu(response);
+		return null;
+	}
 
 	return var;
 }
 
+
+/*********************Find Single Device*****************
+This function gets the device information
+	PRE:
+	POST:
+*/
 /********************Find Neighbor*******************
 This function finds the neighbor for each device
 	PRE: device identifier (String?)
