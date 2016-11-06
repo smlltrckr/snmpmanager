@@ -139,23 +139,25 @@ This function finds a device and returns it to a list
 	PRE:
 	POST:
 */
-netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *currOid, size_t oidLength){
+netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *currOID, size_t currOIDLength){
 	netsnmp_variable_list *vars;
 	int count = 1;
 
 	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
-
 	snmp_add_null_var(pdu, currOID, OIDSize);
 
 	status = snmp_synch_response(ss, pdu, &response);
+
 	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
+      for(vars = response->variables; vars; vars = vars->next_variable)
+        print_variable(vars->name, vars->name_length, vars);
 
 	}
-	else{
+	
+	//Free Response
+	if(response){
 		snmp_free_pdu(response);
-		return null;
 	}
-
 	return var;
 }
 
