@@ -165,63 +165,39 @@ This function finds the rate of traffic on each interface
 */
 void traffic(int timeInterval, int numberOfSamples){
 	int interfaces = getTableData("ifNumber.0"); // Number of interfaces
-	long prevInTraffic[interfaces];
-	long currInTraffic[interfaces];
-	long prevOutTraffic[interfaces];
-	long currOutTraffic[interfaces];
-	long ifSpeed[interfaces];
-	time_t startTime, endTime;
-	double timeElapsed;
+	long inTraffic[numberOfSamples][interfaces];
+	long outTraffic[numberOfSamples][interfaces];
 
-	memset(currInTraffic, 0, sizeof(currInTraffic) / sizeof(long));
-	memset(prevInTraffic, 0, sizeof(prevInTraffic) / sizeof(long));
-	memset(currOutTraffic, 0, sizeof(currOutTraffic) / sizeof(long));
-	memset(prevOutTraffic, 0, sizeof(prevOutTraffic) / sizeof(long));
-	memset(ifSpeed, 0, sizeof(ifSpeed) / sizeof(long));
+	char interfaceName[20];
 
 	// Inbound Traffic
-	for (int a = 0; a < numberOfSamples; a++)
+	for (int a = 0; a < numberOfSamples + 1; a++)
 	{
-		printf("interfaces: %d\n", interfaces);
+		// printf("interfaces: %d\n", interfaces);
+		if(a == 0){
+			printf("Sample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
+			printf("**************************************************\n");
+		}
 		for (int b = 0; b < interfaces; b++)
 			{
 				// Inbound
-				char pollInOctect[] = "ifInOctets.1";
-				pollInOctect[11] += b;
-				printf("pollOctect: %s\n", pollInOctect);
-
-				currInTraffic[b] = getTableData(pollInOctect);
-				printf("currInTraffic %d: %ld\n", a, currInTraffic[b]);
-				prevInTraffic[b] = getTableData(pollInOctect);
-				printf("prevInTraffic %d: %ld\n", a, prevInTraffic[b]);
-
+				sprintf(interfaceName, "ifInOctets.%d", b + 1);
+				inTraffic[a][b] = getTableData(interfaceName);
 				// Outbound
-				char pollOutOctect[] = "ifOutOctets.1";
-				pollOutOctect[12] += b;
-				printf("pollOutOctect: %s\n", pollOutOctect);
+				sprintf(interfaceName, "ifOutOctets.%d", b + 1);
+				outTraffic[a][b] = getTableData(interfaceName);
 
-				currOutTraffic[b] = getTableData(pollOutOctect);
-				printf("currOutTraffic %d: %ld\n", a, currOutTraffic[b]);
-				prevOutTraffic[b] = getTableData(pollOutOctect);
-				printf("prevOutTraffic %d: %ld\n", a, prevOutTraffic[b]);
-
-				char pollSpeed[] = "ifSpeed.1";
-				pollSpeed[8] += b;
-				printf("pollSpeed: %s\n", pollSpeed);
-				ifSpeed[b] = getTableData(pollSpeed);
-				printf("ifSpeed: %ld\n", ifSpeed[b]);
+				if(a > 0){
+					double mbpsIn = (inTraffic[a][b] - inTraffic[a - 1][b]) * 8.0 / 1000000.0 / timeInterval;
+					double mbpsOut = (outTraffic[a][b] - outTraffic[a - 1][b]) *8.0 / 1000000.0 / timeInterval;
+					if(b == 0){
+						printf("%d\t%d\t\t%-9.2lf\t%-9.2lf\n",a, b + 1, mbpsIn, mbpsOut);
+					} else {
+						printf("\t%d\t\t%-9.2lf\t%-9.2lf\n", b + 1, mbpsIn, mbpsOut);
+					}
+				}
 			}
-		printf("Inbound Traffic\n");
-		printTraffic(interfaces, currInTraffic, currOutTraffic, ifSpeed);
-		printf("Outbound Traffic\n");
-		printTraffic(interfaces, currOutTraffic, prevOutTraffic, ifSpeed);
-
-		time(&startTime);
-		do
-		{
-			time(&endTime);
-			timeElapsed = difftime(endTime, startTime);
-		} while (timeElapsed < timeInterval);
+		sleep(timeInterval);
 	}
 	return;
 }
@@ -267,23 +243,4 @@ int getTableData(char *objectName){
 		}
 	}
 	return 0;
-}
-
-/*********************Print Traffic*******************
-This function prints Traffic (in Mbps/s) in a human readable format
-	PRE:
-	POST:
-*/
-void printTraffic(int interfaces, long currTraffic[], long prevTraffic[], long ifSpeed[]){
-	double mbps = 0;
-
-	printf("******************************\n");
-	printf("* Interface |   Rate (Mbps)  *\n");
-	printf("******************************\n");
-	for (int i = 0; i < interfaces; i++){
-		mbps = abs(currTraffic[i] - prevTraffic[i]) * 8 * 100;// / (ifSpeed[i]);
-		printf("*     %d     | %-15.2lf*\n", i + 1, mbps);
-	}
-	printf("******************************\n");
-	return;
 }

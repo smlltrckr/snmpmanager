@@ -27,6 +27,7 @@ fixsnmpd:
 	sudo rm /usr/local/lib/libnetsnmp*
 	sudo apt-get install snmpd
 	sudo nano /etc/snmp/snmpd.conf
+	sudo service snmpd restart
 
 addlibs:
 	cp -a $(HOME)/HW2/lib/. /usr/local/lib/
