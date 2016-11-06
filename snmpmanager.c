@@ -15,7 +15,7 @@ netsnmp_pdu *response;
 void findDevice();
 char **deviceNeighbors(char *device);
 void traffic(int timeInterval, int numberOfSamples);
-void printTraffic(int interfaces, long currTraffic[], long prevTraffic[]);
+void printTraffic(int interfaces, long currTraffic[], long prevTraffic[], long ifSpeed[]);
 int getTableData(char *objectName);
 
 int main(int argc, char ** argv){
@@ -26,7 +26,7 @@ int main(int argc, char ** argv){
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
 		// Default Values?
-		timeInterval = 100;
+		timeInterval = 10;
 		numberOfSamples = 4;
 		agentIP = "127.0.0.1";
 		community = "public";
@@ -169,6 +169,7 @@ void traffic(int timeInterval, int numberOfSamples){
 	long currInTraffic[interfaces];
 	long prevOutTraffic[interfaces];
 	long currOutTraffic[interfaces];
+	long ifSpeed[interfaces];
 	time_t startTime, endTime;
 	double timeElapsed;
 
@@ -176,6 +177,7 @@ void traffic(int timeInterval, int numberOfSamples){
 	memset(prevInTraffic, 0, sizeof(prevInTraffic) / sizeof(long));
 	memset(currOutTraffic, 0, sizeof(currOutTraffic) / sizeof(long));
 	memset(prevOutTraffic, 0, sizeof(prevOutTraffic) / sizeof(long));
+	memset(ifSpeed, 0, sizeof(ifSpeed) / sizeof(long));
 
 	// Inbound Traffic
 	for (int a = 0; a < numberOfSamples; a++)
@@ -184,41 +186,35 @@ void traffic(int timeInterval, int numberOfSamples){
 		for (int b = 0; b < interfaces; b++)
 			{
 				// Inbound
-				// printf("MADE IT HERE 1\n");
-				// int size = 100;// log10(b + 1) + 1; // For int to string
-				// char buffer[100]; // For int to string
-				// snprintf(buffer, size, "%d", b + 1); // For int to string
-
-				// printf("MADE IT HERE 2\n");
-				// puts(buffer);
-				// char octetID[50];
-				// strcpy(octetID, buffer);
-				// char *pollInOctect = strcat("ifInOctets.", buffer);
-				// printf("MADE IT HERE 3\n");
 				char pollInOctect[] = "ifInOctets.1";
 				pollInOctect[11] += b;
 				printf("pollOctect: %s\n", pollInOctect);
 
-				currInTraffic[a] = getTableData(pollInOctect);
-				printf("currInTraffic %d: %ld\n", a, currInTraffic[a]);
-				prevInTraffic[a] = getTableData(pollInOctect);
-				printf("prevInTraffic %d: %ld\n", a, prevInTraffic[a]);
+				currInTraffic[b] = getTableData(pollInOctect);
+				printf("currInTraffic %d: %ld\n", a, currInTraffic[b]);
+				prevInTraffic[b] = getTableData(pollInOctect);
+				printf("prevInTraffic %d: %ld\n", a, prevInTraffic[b]);
 
 				// Outbound
-				// char *pollOutOctect = strcat("ifOutOctets.", buffer);
 				char pollOutOctect[] = "ifOutOctets.1";
 				pollOutOctect[12] += b;
 				printf("pollOutOctect: %s\n", pollOutOctect);
 
-				currOutTraffic[a] = getTableData(pollOutOctect);
-				printf("currOutTraffic %d: %ld\n", a, currOutTraffic[a]);
-				prevOutTraffic[a] = getTableData(pollOutOctect);
-				printf("prevOutTraffic %d: %ld\n", a, prevOutTraffic[a]);
+				currOutTraffic[b] = getTableData(pollOutOctect);
+				printf("currOutTraffic %d: %ld\n", a, currOutTraffic[b]);
+				prevOutTraffic[b] = getTableData(pollOutOctect);
+				printf("prevOutTraffic %d: %ld\n", a, prevOutTraffic[b]);
 
-				// free(buffer);
+				char pollSpeed[] = "ifSpeed.1";
+				pollSpeed[8] += b;
+				printf("pollSpeed: %s\n", pollSpeed);
+				ifSpeed[b] = getTableData(pollSpeed);
+				printf("ifSpeed: %ld\n", ifSpeed[b]);
 			}
-		printTraffic(interfaces, currInTraffic, currOutTraffic);
-		printTraffic(interfaces, currOutTraffic, prevOutTraffic);
+		printf("Inbound Traffic\n");
+		printTraffic(interfaces, currInTraffic, currOutTraffic, ifSpeed);
+		printf("Outbound Traffic\n");
+		printTraffic(interfaces, currOutTraffic, prevOutTraffic, ifSpeed);
 
 		time(&startTime);
 		do
@@ -227,6 +223,7 @@ void traffic(int timeInterval, int numberOfSamples){
 			timeElapsed = difftime(endTime, startTime);
 		} while (timeElapsed < timeInterval);
 	}
+	return;
 }
 /*********************Get Table Data*******************
 This function gets int data from the table.
@@ -249,7 +246,7 @@ int getTableData(char *objectName){
 	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
 		// SUCCESS
 		for (vars = response->variables; vars; vars = vars->next_variable){
-			if (vars->type == ASN_INTEGER || vars->type == ASN_COUNTER){
+			if (vars->type == ASN_INTEGER || vars->type == ASN_COUNTER || vars->type == ASN_GAUGE){
 				return *vars->val.integer;
 			} else {
 				vars = vars->next_variable;
@@ -273,10 +270,20 @@ int getTableData(char *objectName){
 }
 
 /*********************Print Traffic*******************
-This function prints Traffic in a human readable format
+This function prints Traffic (in Mbps/s) in a human readable format
 	PRE:
 	POST:
 */
-void printTraffic(int interfaces, long currTraffic[], long prevTraffic[]){
+void printTraffic(int interfaces, long currTraffic[], long prevTraffic[], long ifSpeed[]){
+	double mbps = 0;
 
+	printf("******************************\n");
+	printf("* Interface |   Rate (Mbps)  *\n");
+	printf("******************************\n");
+	for (int i = 0; i < interfaces; i++){
+		mbps = abs(currTraffic[i] - prevTraffic[i]) * 8 * 100;// / (ifSpeed[i]);
+		printf("*     %d     | %-15.2lf*\n", i + 1, mbps);
+	}
+	printf("******************************\n");
+	return;
 }
