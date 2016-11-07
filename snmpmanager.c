@@ -154,6 +154,7 @@ netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstL
 	int status;
 	int count = 1;
 	int run = 1;
+	int pduCommand = SNMP_MSG_GET;
 
     oid currOid[MAX_OID_LEN];
     size_t currLen;
@@ -167,19 +168,22 @@ netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstL
     memmove(currOid, firstOid, firstLen * sizeof(oid));
     currLen = firstLen;
 	
-	do{	
-		pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
+	do{
+		pdu = snmp_pdu_create(pduCommand);
 		snmp_add_null_var(pdu, currOid, currLen);
 	
 		status = snmp_synch_response(ss, pdu, &response);
 	
 		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
-	    	for(vars = response->variables; vars; vars = vars->next_variable){
-                if (snmp_oid_compare(lastOid, lastLen, vars->name, vars->name_length) <= 0) {
-                    run = 0;
-                    continue;
-                }
-                print_variable(vars->name, vars->name_length, vars);
+			/* manipuate the information ourselves */
+		    for(vars = response->variables; vars; vars = vars->next_variable) {
+		        if (vars->type == ASN_OCTET_STR) {
+					char *sp = (char *)malloc(1 + vars->val_len);
+			  		memcpy(sp, vars->val.string, vars->val_len);
+			  		sp[vars->val_len] = '\0';
+		        	printf("value #%d is a string: %s\n", count++, sp);
+					free(sp);
+				}
                 memmove((char *) currOid, (char *) vars->name, vars->name_length * sizeof(oid));
                 currLen = vars->name_length;
             }
@@ -187,7 +191,9 @@ netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstL
 		if(response){
 			snmp_free_pdu(response);
 		}
+		pduCommand = SNMP_MSG_GETNEXT; //Redundant but need to grab first item
 	}while(run);
+
 	return vars;
 }
 
