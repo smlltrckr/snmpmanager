@@ -14,9 +14,10 @@ netsnmp_pdu *pdu;
 netsnmp_pdu *response;
 
 // Function Declarations
-void findDevice();
 char **deviceNeighbors(char *device);
 void traffic();
+
+netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstLen);
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
@@ -70,7 +71,6 @@ int main(int argc, char ** argv){
 		exit(1);
 	}
 	
-	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
 	anOID_len = MAX_OID_LEN;
 	if (!snmp_parse_oid(".1.3.6.1.2.1.1.1.0", anOID, &anOID_len))
 	{
@@ -78,55 +78,64 @@ int main(int argc, char ** argv){
 		SOCK_CLEANUP;
 		exit(1);
 	}
-
-	snmp_add_null_var(pdu, anOID, anOID_len);
-
-	/* Send out a request */
-	status = snmp_synch_response(ss, pdu, &response);
-
-	//Start test result
-	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
-      /*
-       * SUCCESS: Print the result variables
-       */
-
-      for(vars = response->variables; vars; vars = vars->next_variable)
-        print_variable(vars->name, vars->name_length, vars);
-
-      /* manipuate the information ourselves */
-      for(vars = response->variables; vars; vars = vars->next_variable) {
-        if (vars->type == ASN_OCTET_STR) {
-	  char *sp = (char *)malloc(1 + vars->val_len);
-	  memcpy(sp, vars->val.string, vars->val_len);
-	  sp[vars->val_len] = '\0';
-          printf("value #%d is a string: %s\n", count++, sp);
-	  free(sp);
-	}
-        else
-          printf("value #%d is NOT a string! Ack!\n", count++);
-      }
-    } else {
-      /*
-       * FAILURE: print what went wrong!
-       */
-
-      if (status == STAT_SUCCESS)
-        fprintf(stderr, "Error in packet\nReason: %s\n",
-                snmp_errstring(response->errstat));
-      else if (status == STAT_TIMEOUT)
-        fprintf(stderr, "Timeout: No response from %s.\n",
-                session.peername);
-      else
-        snmp_sess_perror("snmpdemoapp", ss);
-
-    }//END test result
-
-	/* Clean up and close connection */
-	if (response)
-	{
-		snmp_free_pdu(response);
-	}
-
+	getBulk(ss, anOID, anOID_len);
+//	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
+//	anOID_len = MAX_OID_LEN;
+//	if (!snmp_parse_oid(".1.3.6.1.2.1.1.1.0", anOID, &anOID_len))
+//	{
+//		snmp_perror(".1.3.6.1.2.1.1.1.0");
+//		SOCK_CLEANUP;
+//		exit(1);
+//	}
+//
+//	snmp_add_null_var(pdu, anOID, anOID_len);
+//
+//	/* Send out a request */
+//	status = snmp_synch_response(ss, pdu, &response);
+//
+//	//Start test result
+//	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
+//      /*
+//       * SUCCESS: Print the result variables
+//       */
+//
+//      for(vars = response->variables; vars; vars = vars->next_variable)
+//        print_variable(vars->name, vars->name_length, vars);
+//
+//      /* manipuate the information ourselves */
+//      for(vars = response->variables; vars; vars = vars->next_variable) {
+//        if (vars->type == ASN_OCTET_STR) {
+//	  char *sp = (char *)malloc(1 + vars->val_len);
+//	  memcpy(sp, vars->val.string, vars->val_len);
+//	  sp[vars->val_len] = '\0';
+//          printf("value #%d is a string: %s\n", count++, sp);
+//	  free(sp);
+//	}
+//        else
+//          printf("value #%d is NOT a string! Ack!\n", count++);
+//      }
+//    } else {
+//      /*
+//       * FAILURE: print what went wrong!
+//       */
+//
+//      if (status == STAT_SUCCESS)
+//        fprintf(stderr, "Error in packet\nReason: %s\n",
+//                snmp_errstring(response->errstat));
+//      else if (status == STAT_TIMEOUT)
+//        fprintf(stderr, "Timeout: No response from %s.\n",
+//                session.peername);
+//      else
+//        snmp_sess_perror("snmpdemoapp", ss);
+//
+//    }//END test result
+//
+//	/* Clean up and close connection */
+//	if (response)
+//	{
+//		snmp_free_pdu(response);
+//	}
+//
 	snmp_close(ss);
 
 	SOCK_CLEANUP;
@@ -145,34 +154,34 @@ netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstL
 	int status;
 	int count = 1;
 	int run = 1;
+
     oid currOid[MAX_OID_LEN];
     size_t currLen;
     oid lastOid[MAX_OID_LEN];
     size_t lastLen = 0;
 
 	memmove(lastOid, firstOid, firstLen*sizeof(oid));
-    lastLen = firstlen;
-    lastOid[end_len-1]++;
+    lastLen = firstLen;
+    lastOid[lastLen-1]++;
 
     memmove(currOid, firstOid, firstLen * sizeof(oid));
-    currOid = firstLen;
+    currLen = firstLen;
 	
 	do{	
 		pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
-		snmp_add_null_var(pdu, currOID, currOIDLength);
+		snmp_add_null_var(pdu, currOid, currLen);
 	
 		status = snmp_synch_response(ss, pdu, &response);
 	
 		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
 	    	for(vars = response->variables; vars; vars = vars->next_variable){
-                if (snmp_oid_compare(end_oid, end_len, vars->name, vars->name_length) <= 0) {
+                if (snmp_oid_compare(lastOid, lastLen, vars->name, vars->name_length) <= 0) {
                     run = 0;
                     continue;
                 }
                 print_variable(vars->name, vars->name_length, vars);
-                memmove((char *) name, (char *) vars->name, vars->name_length * sizeof(oid));
-                name_length = vars->name_length;
-                }
+                memmove((char *) currOid, (char *) vars->name, vars->name_length * sizeof(oid));
+                currLen = vars->name_length;
             }
         }
 		if(response){
