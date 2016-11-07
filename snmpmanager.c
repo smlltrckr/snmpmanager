@@ -69,8 +69,8 @@ int main(int argc, char ** argv){
 		SOCK_CLEANUP;
 		exit(1);
 	}
-
-	pdu = snmp_pdu_create(SNMP_MSG_GET);
+	
+	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
 	anOID_len = MAX_OID_LEN;
 	if (!snmp_parse_oid(".1.3.6.1.2.1.1.1.0", anOID, &anOID_len))
 	{
@@ -126,6 +126,7 @@ int main(int argc, char ** argv){
 	{
 		snmp_free_pdu(response);
 	}
+
 	snmp_close(ss);
 
 	SOCK_CLEANUP;
@@ -139,26 +140,46 @@ This function finds a device and returns it to a list
 	PRE:
 	POST:
 */
-netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *currOID, size_t currOIDLength){
+netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstLen){
 	netsnmp_variable_list *vars;
+	int status;
 	int count = 1;
+	int run = 1;
+    oid currOid[MAX_OID_LEN];
+    size_t currLen;
+    oid lastOid[MAX_OID_LEN];
+    size_t lastLen = 0;
 
-	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
-	snmp_add_null_var(pdu, currOID, OIDSize);
+	memmove(lastOid, firstOid, firstLen*sizeof(oid));
+    lastLen = firstlen;
+    lastOid[end_len-1]++;
 
-	status = snmp_synch_response(ss, pdu, &response);
-
-	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
-      for(vars = response->variables; vars; vars = vars->next_variable)
-        print_variable(vars->name, vars->name_length, vars);
-
-	}
+    memmove(currOid, firstOid, firstLen * sizeof(oid));
+    currOid = firstLen;
 	
-	//Free Response
-	if(response){
-		snmp_free_pdu(response);
-	}
-	return var;
+	do{	
+		pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
+		snmp_add_null_var(pdu, currOID, currOIDLength);
+	
+		status = snmp_synch_response(ss, pdu, &response);
+	
+		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
+	    	for(vars = response->variables; vars; vars = vars->next_variable){
+                if (snmp_oid_compare(end_oid, end_len, vars->name, vars->name_length) <= 0) {
+                    run = 0;
+                    continue;
+                }
+                print_variable(vars->name, vars->name_length, vars);
+                memmove((char *) name, (char *) vars->name, vars->name_length * sizeof(oid));
+                name_length = vars->name_length;
+                }
+            }
+        }
+		if(response){
+			snmp_free_pdu(response);
+		}
+	}while(run);
+	return vars;
 }
 
 
