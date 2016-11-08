@@ -22,7 +22,7 @@ void findDevice();
 char **deviceNeighbors(char *device);
 void trafficV3(int timeInterval, int numberOfSamples);
 int getTableData(char *objectName);
-struct trafficData *getTableDataTest(int interfaces);
+struct trafficData *getOctets(int interfaces);
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
@@ -125,9 +125,9 @@ void trafficV3(int timeInterval, int numberOfSamples){
 			printf("**************************************************\n");
 		}
 		start = getTableData("system.sysUpTime.0");
-		prevTraffic = getTableDataTest(interfaces);
+		prevTraffic = getOctets(interfaces);
 		sleep(timeBetweenPolls);
-		currTraffic = getTableDataTest(interfaces);
+		currTraffic = getOctets(interfaces);
 		end = getTableData("system.sysUpTime.0");
 		elapsedTime = ((end - start) / 100.0) + timeBetweenPolls;
 		for (int b = 0; b < interfaces; b++){
@@ -195,7 +195,7 @@ int getTableData(char *objectName){
 	return 0;
 }
 
-struct trafficData *getTableDataTest(int interfaces){
+struct trafficData *getOctets(int interfaces){
 	netsnmp_pdu *pdu;
 	oid anOID[MAX_OID_LEN];
 	netsnmp_variable_list *vars;
