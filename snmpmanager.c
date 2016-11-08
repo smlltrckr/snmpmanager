@@ -6,17 +6,23 @@
 #include <math.h>
 
 #define MAX_IPV4 15
-
 // Global Variables
 netsnmp_session session, *ss;
 netsnmp_pdu *response;
 
+// trafficData struct
+struct trafficData
+{
+	long *ifOutOctets;
+	long *ifInOctets;
+};
+
 // Function Declarations
 void findDevice();
 char **deviceNeighbors(char *device);
-void traffic(int timeInterval, int numberOfSamples);
-void printTraffic(int interfaces, long currTraffic[], long prevTraffic[], long ifSpeed[]);
+void trafficV3(int timeInterval, int numberOfSamples);
 int getTableData(char *objectName);
+struct trafficData *getTableDataTest(int interfaces);
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
@@ -62,7 +68,7 @@ int main(int argc, char ** argv){
 		exit(1);
 	}
 
-	traffic(timeInterval, numberOfSamples);
+	trafficV3(timeInterval, numberOfSamples);
 
 	/* Clean up and close connection */
 	if (response)
@@ -104,44 +110,45 @@ This function finds the rate of traffic on each interface
 	PRE:
 	POST:
 */
-void traffic(int timeInterval, int numberOfSamples){
+void trafficV3(int timeInterval, int numberOfSamples){
 	int interfaces = getTableData("ifNumber.0"); // Number of interfaces
-	long inTraffic[numberOfSamples][interfaces];
-	long outTraffic[numberOfSamples][interfaces];
-
+	long start, end;
+	double elapsedTime;
+	struct trafficData *prevTraffic, *currTraffic;
 	char interfaceName[20];
+	int timeBetweenPolls = 5;
 
-	// Inbound Traffic
-	for (int a = 0; a < numberOfSamples + 1; a++)
+	for (int a = 0; a < numberOfSamples; a++)
 	{
-		// printf("interfaces: %d\n", interfaces);
 		if(a == 0){
 			printf("Sample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
 			printf("**************************************************\n");
 		}
-		for (int b = 0; b < interfaces; b++)
-			{
-				// Inbound
-				sprintf(interfaceName, "ifInOctets.%d", b + 1);
-				inTraffic[a][b] = getTableData(interfaceName);
-				// Outbound
-				sprintf(interfaceName, "ifOutOctets.%d", b + 1);
-				outTraffic[a][b] = getTableData(interfaceName);
-
-				if(a > 0){
-					double mbpsIn = (inTraffic[a][b] - inTraffic[a - 1][b]) * 8.0 / 1000000.0 / timeInterval;
-					double mbpsOut = (outTraffic[a][b] - outTraffic[a - 1][b]) *8.0 / 1000000.0 / timeInterval;
-					if(b == 0){
-						printf("%d\t%d\t\t%-9.2lf\t%-9.2lf\n",a, b + 1, mbpsIn, mbpsOut);
-					} else {
-						printf("\t%d\t\t%-9.2lf\t%-9.2lf\n", b + 1, mbpsIn, mbpsOut);
-					}
-				}
+		start = getTableData("system.sysUpTime.0");
+		prevTraffic = getTableDataTest(interfaces);
+		sleep(timeBetweenPolls);
+		currTraffic = getTableDataTest(interfaces);
+		end = getTableData("system.sysUpTime.0");
+		elapsedTime = ((end - start) / 100.0) + timeBetweenPolls;
+		for (int b = 0; b < interfaces; b++){
+			double mbpsIn = (currTraffic->ifInOctets[b] - prevTraffic->ifInOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
+			double mbpsOut = (currTraffic->ifOutOctets[b] - prevTraffic->ifOutOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
+			if(b == 0){
+				printf("%d\t%d\t\t%-9.2lf\t%-9.2lf\n",a + 1, b + 1, mbpsIn, mbpsOut);
+			} else {
+				printf("\t%d\t\t%-9.2lf\t%-9.2lf\n", b + 1, mbpsIn, mbpsOut);
 			}
-			if(a != numberOfSamples){
-				sleep(timeInterval);
-			}
+		}
+		if(a != numberOfSamples - 1){
+			sleep(timeInterval);
+		}
 	}
+	free(prevTraffic->ifInOctets);
+	free(prevTraffic->ifOutOctets);
+	free(prevTraffic);
+	free(currTraffic->ifInOctets);
+	free(currTraffic->ifOutOctets);
+	free(currTraffic);
 	return;
 }
 /*********************Get Table Data*******************
@@ -165,7 +172,7 @@ int getTableData(char *objectName){
 	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
 		// SUCCESS
 		for (vars = response->variables; vars; vars = vars->next_variable){
-			if (vars->type == ASN_INTEGER || vars->type == ASN_COUNTER || vars->type == ASN_GAUGE){
+			if (vars->type == ASN_INTEGER || vars->type == ASN_COUNTER || vars->type == ASN_TIMETICKS){
 				return *vars->val.integer;
 			} else {
 				vars = vars->next_variable;
@@ -186,4 +193,87 @@ int getTableData(char *objectName){
 		}
 	}
 	return 0;
+}
+
+struct trafficData *getTableDataTest(int interfaces){
+	netsnmp_pdu *pdu;
+	oid anOID[MAX_OID_LEN];
+	netsnmp_variable_list *vars;
+	size_t anOID_len = MAX_OID_LEN;
+	int status;
+	struct trafficData *tData;
+
+	char interfaceName[20];
+
+	tData = (struct trafficData *) malloc(sizeof(struct trafficData) + (sizeof(long) * interfaces)+ (sizeof(long) * interfaces));
+	tData->ifOutOctets = (long *) malloc(sizeof(long) * interfaces);
+	tData->ifInOctets = (long *) malloc(sizeof(long) * interfaces);
+	
+	for (int i = 0; i < interfaces; i++)
+	{
+		pdu = snmp_pdu_create(SNMP_MSG_GET);
+		sprintf(interfaceName, "ifInOctets.%d", i + 1);
+		get_node(interfaceName, anOID, &anOID_len);
+		snmp_add_null_var(pdu, anOID, anOID_len);
+
+		status = snmp_synch_response(ss, pdu, &response);
+
+		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
+			// SUCCESS
+			for (vars = response->variables; vars; vars = vars->next_variable){
+				if (vars->type == ASN_COUNTER){
+					tData->ifInOctets[i] = *vars->val.integer;
+				} else {
+					vars = vars->next_variable;
+				}
+			}
+			
+		} else {
+			// FAILURE
+			if (status == STAT_SUCCESS){
+				fprintf(stderr, "Error in packet\n Reason: %s\n",
+					snmp_errstring(response->errstat));
+				exit (-1);
+			} else if (status == STAT_TIMEOUT){
+				fprintf(stderr, "Timeout: No response from %s.\n",
+					session.peername);
+				exit (-2);
+			} else {
+				snmp_sess_perror("snmpmanager", ss);
+			}
+		}
+
+	
+		pdu = snmp_pdu_create(SNMP_MSG_GET);
+		sprintf(interfaceName, "ifOutOctets.%d", i + 1);
+		get_node(interfaceName, anOID, &anOID_len);
+		snmp_add_null_var(pdu, anOID, anOID_len);
+		status = snmp_synch_response(ss, pdu, &response);
+
+		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
+			// SUCCESS
+			for (vars = response->variables; vars; vars = vars->next_variable){
+				if (vars->type == ASN_COUNTER){
+					tData->ifOutOctets[i] = *vars->val.integer;
+				} else {
+					vars = vars->next_variable;
+				}
+			}
+			
+		} else {
+			// FAILURE
+			if (status == STAT_SUCCESS){
+				fprintf(stderr, "Error in packet\n Reason: %s\n",
+					snmp_errstring(response->errstat));
+				exit (-1);
+			} else if (status == STAT_TIMEOUT){
+				fprintf(stderr, "Timeout: No response from %s.\n",
+					session.peername);
+				exit (-2);
+			} else {
+				snmp_sess_perror("snmpmanager", ss);
+			}
+		}
+	}
+	return tData;
 }
