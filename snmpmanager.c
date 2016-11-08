@@ -10,14 +10,13 @@
 
 // Global Variables
 netsnmp_session session, *ss;
-netsnmp_pdu *pdu;
 netsnmp_pdu *response;
 
 // Function Declarations
 char **deviceNeighbors(char *device);
 void traffic();
 
-netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstLen);
+netsnmp_variable_list *getBulk(oid *firstOid, size_t firstLen);
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
@@ -72,13 +71,15 @@ int main(int argc, char ** argv){
 	}
 	
 	anOID_len = MAX_OID_LEN;
-	if (!snmp_parse_oid(".1.3.6.1.2.1.1.1.0", anOID, &anOID_len))
+	if (!snmp_parse_oid("ifType.1", anOID, &anOID_len))
 	{
 		snmp_perror(".1.3.6.1.2.1.1.1.0");
 		SOCK_CLEANUP;
 		exit(1);
 	}
-	getBulk(ss, anOID, anOID_len);
+	
+//	snmp_add_null_var(pdu, anOID, anOID_len);
+	getBulk(anOID, anOID_len);
 //	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
 //	anOID_len = MAX_OID_LEN;
 //	if (!snmp_parse_oid(".1.3.6.1.2.1.1.1.0", anOID, &anOID_len))
@@ -149,8 +150,9 @@ This function finds a device and returns it to a list
 	PRE:
 	POST:
 */
-netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstLen){
+netsnmp_variable_list *getBulk(oid *firstOid, size_t firstLen){
 	netsnmp_variable_list *vars;
+	netsnmp_pdu *pdu;
 	int status;
 	int count = 1;
 	int run = 1;
@@ -177,17 +179,21 @@ netsnmp_variable_list *getBulk(netsnmp_session *ss, oid *firstOid, size_t firstL
 		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
 			/* manipuate the information ourselves */
 		    for(vars = response->variables; vars; vars = vars->next_variable) {
-		        if (vars->type == ASN_OCTET_STR) {
+//		        if (vars->type == ASN_OCTET_STR) {
 					char *sp = (char *)malloc(1 + vars->val_len);
 			  		memcpy(sp, vars->val.string, vars->val_len);
 			  		sp[vars->val_len] = '\0';
-		        	printf("value #%d is a string: %s\n", count++, sp);
+		        //	printf("value %d is a string: %s\n", count++, sp);
+					print_variable(response->variables->name, response->variables->name_length, response->variables);
+//		        	printf(":: string: %s\n", sp);
 					free(sp);
-				}
                 memmove((char *) currOid, (char *) vars->name, vars->name_length * sizeof(oid));
                 currLen = vars->name_length;
             }
-        }
+		}
+		//End of MIBS
+        if(status != STAT_SUCCESS || response->errstat != SNMP_ERR_NOERROR)
+			run = 0;
 		if(response){
 			snmp_free_pdu(response);
 		}
