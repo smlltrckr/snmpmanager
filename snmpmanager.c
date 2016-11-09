@@ -21,13 +21,15 @@ struct trafficData
 // Function Declarations
 void trafficV3(int timeInterval, int numberOfSamples);
 int getTableData(char *objectName);
-int getNext(oid *anOID, size_t anOID_len, int interfc, int count);
+int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID);
 struct trafficData *getOctets(int interfaces);
+oid *getEndOID(char *anOID);
+void printAssignmentHeader();
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
 	char *agentIP, *community;
-	oid anOID[MAX_OID_LEN];
+	oid anOID[MAX_OID_LEN], endOID[MAX_OID_LEN];
 	size_t anOID_len = MAX_OID_LEN;
 	int interfaces; 
 	// netsnmp_session session, *ss;
@@ -74,22 +76,25 @@ int main(int argc, char ** argv){
 	}
 
 	// Function Calls
+	printAssignmentHeader();
 	printf("Interface\tIpAddress\n");
-	printf("*************************************\n");
+	printf("**************************************************\n");
 	interfaces = getTableData("ifNumber.0");
 	if (!snmp_parse_oid("ipAdEntAddr", anOID, &anOID_len)) { 
       snmp_perror("ipAdEntAddr");
       exit(1); 
 	}
-	getNext(anOID, anOID_len, 1, interfaces);
+
+	getNext(anOID, anOID_len, 1, getEndOID("ipAdEntIfIndex"));
 
 	printf("\nInterface\tNeghbors\n");
-	printf("*************************************\n");
+	printf("**************************************************\n");
 	if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID, &anOID_len)) { 
       snmp_perror("ipNetToMediaNetAddress");
       exit(1); 
 	}
-	getNext(anOID, anOID_len, 1, interfaces);
+
+	getNext(anOID, anOID_len, 1, getEndOID("ipNetToMediaType"));
 
 	trafficV3(timeInterval, numberOfSamples);
 	// END Function Calls
@@ -234,8 +239,8 @@ This function recursively gets the next node and prints results
 	PRE: 
 	POST:
 */
-int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
-	netsnmp_pdu *pdu;
+int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
+	netsnmp_pdu *pdu, *nextPdu;
 	netsnmp_variable_list *vars;
 	int status;
 	char ipAddress[50];
@@ -244,7 +249,7 @@ int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
 	oid anOID2[MAX_OID_LEN];
 	size_t anOID_len2 = MAX_OID_LEN;
 
-	if (count != 0)
+	if (snmp_oid_compare(anOID, anOID_len, endOID, anOID_len) < 0)
 	{
 		pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
 		snmp_add_null_var(pdu, anOID, anOID_len);
@@ -268,9 +273,9 @@ int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
 			    exit(1); 
 			}
 			if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len2) == 1) {
-				getNext(vars->name, vars->name_length, 1, count - 1);
+				getNext(vars->name, vars->name_length, 1, endOID);
 			} else {
-				getNext(vars->name, vars->name_length, interfc + 1, count - 1);
+				getNext(vars->name, vars->name_length, interfc + 1, endOID);
 			}		
 		} else {
 		// FAILURE
@@ -288,4 +293,53 @@ int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
 		}
 	}
 	return 0;	
+}
+
+oid *getEndOID(char *anOID){
+	netsnmp_pdu *pdu;
+	oid endOID[MAX_OID_LEN];
+	size_t endOID_len = MAX_OID_LEN;
+	netsnmp_variable_list *vars;
+	int status;
+
+	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
+
+	if (!snmp_parse_oid(anOID, endOID, &endOID_len)) { 
+    	snmp_perror(anOID);
+    	exit(1); 
+	}
+
+	snmp_add_null_var(pdu, endOID, endOID_len);
+	status = snmp_synch_response(ss, pdu, &response);
+
+	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) { 
+      // Success
+		// print_variable(response->variables->name, response->variables->name_length, response->variables);
+		return response->variables->name;
+
+	} else {
+       // FAILURE: print what went wrong!
+
+		if (status == STAT_SUCCESS){
+			fprintf(stderr, "DEBUG:: Error in packet\nReason: %s\n", 
+				snmp_errstring(response->errstat));
+			exit (-1);
+		}
+		else if (status == STAT_TIMEOUT){
+			fprintf(stderr, "Timeout: No response from %s.\n", session.peername);
+			exit (-2);
+		}
+		else
+			snmp_sess_perror("snmpdemoapp", ss);
+		exit (-3);
+	}
+	return NULL;
+}
+
+void printAssignmentHeader(){
+	printf("**************************************************\n");
+	printf("*                  Assignment 2                  *\n");
+	printf("*                     CS158B                     *\n");
+	printf("*           By Sam Rucker, Dustin Tran           *\n");
+	printf("**************************************************\n\n");
 }
