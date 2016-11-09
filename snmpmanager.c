@@ -239,6 +239,10 @@ int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
 	netsnmp_variable_list *vars;
 	int status;
 	char ipAddress[50];
+	char *ip;
+	ip = strtok(ipAddress, "IpAddress: ");
+	oid anOID2[MAX_OID_LEN];
+	size_t anOID_len2 = MAX_OID_LEN;
 
 	if (count != 0)
 	{
@@ -254,11 +258,20 @@ int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
 				// print_variable(vars->name, vars->name_length, vars);
 				
 				snprint_ipaddress (ipAddress, sizeof(ipAddress), vars, NULL, NULL, NULL);
-				printf("%d\t%s\n", interfc, ipAddress);
+				ip = strtok(ipAddress, "IpAddress: ");
+				// printf("%ld\n", strlen(ipAddress));
+				printf("%d\t\t%s\n", interfc, ip);
 			}
 			// TODO need to have some kind of check for Interface neighbors
-			getNext(vars->name, vars->name_length, interfc + 1, count - 1);
-
+			if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len2)) { 
+			    snmp_perror("ipNetToMediaNetAddress");
+			    exit(1); 
+			}
+			if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len2) == 1) {
+				getNext(vars->name, vars->name_length, 1, count - 1);
+			} else {
+				getNext(vars->name, vars->name_length, interfc + 1, count - 1);
+			}		
 		} else {
 		// FAILURE
 			if (status == STAT_SUCCESS){
