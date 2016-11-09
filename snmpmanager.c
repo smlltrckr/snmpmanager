@@ -6,17 +6,17 @@
 #include <math.h>
 
 #define MAX_IPV4 15
+
 // Global Variables
 netsnmp_session session, *ss;
 netsnmp_pdu *response;
 
-// trafficData struct
+// Structs
 struct trafficData
 {
 	long *ifOutOctets;
 	long *ifInOctets;
 };
-
 
 // Function Declarations
 void trafficV3(int timeInterval, int numberOfSamples);
@@ -31,9 +31,7 @@ int main(int argc, char ** argv){
 	char *agentIP, *community;
 	oid anOID[MAX_OID_LEN], endOID[MAX_OID_LEN];
 	size_t anOID_len = MAX_OID_LEN;
-	int interfaces; 
-	// netsnmp_session session, *ss;
-	// netsnmp_pdu *response;
+	int interfaces;
 
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
@@ -72,7 +70,7 @@ int main(int argc, char ** argv){
 	{
 		snmp_sess_perror("ack", &session);
 		SOCK_CLEANUP;
-		exit(1);
+		exit(75);
 	}
 
 	// Function Calls
@@ -82,7 +80,7 @@ int main(int argc, char ** argv){
 	interfaces = getTableData("ifNumber.0");
 	if (!snmp_parse_oid("ipAdEntAddr", anOID, &anOID_len)) { 
       snmp_perror("ipAdEntAddr");
-      exit(1); 
+      exit(85); 
 	}
 
 	getNext(anOID, anOID_len, 1, getEndOID("ipAdEntIfIndex"));
@@ -91,7 +89,7 @@ int main(int argc, char ** argv){
 	printf("**************************************************\n");
 	if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID, &anOID_len)) { 
       snmp_perror("ipNetToMediaNetAddress");
-      exit(1); 
+      exit(94); 
 	}
 
 	getNext(anOID, anOID_len, 1, getEndOID("ipNetToMediaType"));
@@ -158,6 +156,7 @@ void trafficV3(int timeInterval, int numberOfSamples){
 	free(currTraffic);
 	return;
 }
+
 /*********************Get Table Data*******************
 This function gets int data from the table.
 	PRE:
@@ -233,9 +232,9 @@ struct trafficData *getOctets(int interfaces){
 	return tData;
 }
 
-
 /*********************Get Next*******************
-This function recursively gets the next node and prints results
+This function recursively gets the next node
+and prints results along the way
 	PRE: 
 	POST:
 */
@@ -260,17 +259,13 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
 		// SUCCESS: Results are in response
 			vars = response->variables;
 			if (vars->type == ASN_IPADDRESS){
-				// print_variable(vars->name, vars->name_length, vars);
-				
 				snprint_ipaddress (ipAddress, sizeof(ipAddress), vars, NULL, NULL, NULL);
 				ip = strtok(ipAddress, "IpAddress: ");
-				// printf("%ld\n", strlen(ipAddress));
 				printf("%d\t\t%s\n", interfc, ip);
 			}
-			// TODO need to have some kind of check for Interface neighbors
 			if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len2)) { 
 			    snmp_perror("ipNetToMediaNetAddress");
-			    exit(1); 
+			    exit(269); 
 			}
 			if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len2) == 1) {
 				getNext(vars->name, vars->name_length, 1, endOID);
@@ -295,6 +290,11 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
 	return 0;	
 }
 
+/*********************Get End OID*******************
+This function gets the next node.
+	PRE: 
+	POST:
+*/
 oid *getEndOID(char *anOID){
 	netsnmp_pdu *pdu;
 	oid endOID[MAX_OID_LEN];
@@ -306,7 +306,7 @@ oid *getEndOID(char *anOID){
 
 	if (!snmp_parse_oid(anOID, endOID, &endOID_len)) { 
     	snmp_perror(anOID);
-    	exit(1); 
+    	exit(305); 
 	}
 
 	snmp_add_null_var(pdu, endOID, endOID_len);
@@ -314,28 +314,30 @@ oid *getEndOID(char *anOID){
 
 	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) { 
       // Success
-		// print_variable(response->variables->name, response->variables->name_length, response->variables);
 		return response->variables->name;
-
 	} else {
        // FAILURE: print what went wrong!
-
 		if (status == STAT_SUCCESS){
 			fprintf(stderr, "DEBUG:: Error in packet\nReason: %s\n", 
 				snmp_errstring(response->errstat));
-			exit (-1);
+			exit (322);
 		}
 		else if (status == STAT_TIMEOUT){
 			fprintf(stderr, "Timeout: No response from %s.\n", session.peername);
-			exit (-2);
+			exit (326);
 		}
 		else
 			snmp_sess_perror("snmpdemoapp", ss);
-		exit (-3);
+		exit (330);
 	}
 	return NULL;
 }
 
+/*********************printAssignmentHeader*******************
+This function prints the assignment header.
+	PRE: 
+	POST:
+*/
 void printAssignmentHeader(){
 	printf("**************************************************\n");
 	printf("*                  Assignment 2                  *\n");
