@@ -5,8 +5,6 @@
 #include <time.h>
 #include <math.h>
 
-#define MAX_IPV4 15
-
 // Global Variables
 netsnmp_session session, *ss;
 netsnmp_pdu *response;
@@ -29,7 +27,7 @@ void printAssignmentHeader();
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
 	char *agentIP, *community;
-	oid anOID[MAX_OID_LEN], endOID[MAX_OID_LEN];
+	oid anOID[MAX_OID_LEN], *endOID;
 	size_t anOID_len = MAX_OID_LEN;
 	int interfaces;
 
@@ -82,8 +80,8 @@ int main(int argc, char ** argv){
       snmp_perror("ipAdEntAddr");
       exit(85); 
 	}
-
-	getNext(anOID, anOID_len, 1, getEndOID("ipAdEntIfIndex"));
+	endOID = getEndOID("ipAdEntIfIndex");
+	getNext(anOID, anOID_len, 1, endOID);
 
 	printf("\nInterface\tNeghbors\n");
 	printf("**************************************************\n");
@@ -91,8 +89,8 @@ int main(int argc, char ** argv){
       snmp_perror("ipNetToMediaNetAddress");
       exit(94); 
 	}
-
-	getNext(anOID, anOID_len, 1, getEndOID("ipNetToMediaType"));
+	endOID = getEndOID("ipNetToMediaType");
+	getNext(anOID, anOID_len, 1, endOID);
 
 	trafficV3(timeInterval, numberOfSamples);
 	// END Function Calls
@@ -120,7 +118,6 @@ void trafficV3(int timeInterval, int numberOfSamples){
 	long start, end;
 	double elapsedTime;
 	struct trafficData *prevTraffic, *currTraffic;
-	char interfaceName[20];
 	int timeBetweenPolls = 5;
 
 	for (int a = 0; a < numberOfSamples; a++)
@@ -208,13 +205,7 @@ each interface.
 	POST:
 */
 struct trafficData *getOctets(int interfaces){
-	netsnmp_pdu *pdu;
-	oid anOID[MAX_OID_LEN];
-	netsnmp_variable_list *vars;
-	size_t anOID_len = MAX_OID_LEN;
-	int status;
 	struct trafficData *tData;
-
 	char interfaceName[20];
 
 	tData = (struct trafficData *) malloc(sizeof(struct trafficData) + (sizeof(long) * interfaces)+ (sizeof(long) * interfaces));
@@ -242,11 +233,10 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
 	netsnmp_pdu *pdu, *nextPdu;
 	netsnmp_variable_list *vars;
 	int status;
-	char ipAddress[50];
+	char ipAddress[100];
 	char *ip;
 	ip = strtok(ipAddress, "IpAddress: ");
 	oid anOID2[MAX_OID_LEN];
-	size_t anOID_len2 = MAX_OID_LEN;
 
 	if (snmp_oid_compare(anOID, anOID_len, endOID, anOID_len) < 0)
 	{
@@ -263,11 +253,11 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
 				ip = strtok(ipAddress, "IpAddress: ");
 				printf("%d\t\t%s\n", interfc, ip);
 			}
-			if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len2)) { 
+			if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len)) { 
 			    snmp_perror("ipNetToMediaNetAddress");
 			    exit(269); 
 			}
-			if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len2) == 1) {
+			if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len) == 1) {
 				getNext(vars->name, vars->name_length, 1, endOID);
 			} else {
 				getNext(vars->name, vars->name_length, interfc + 1, endOID);
@@ -299,7 +289,6 @@ oid *getEndOID(char *anOID){
 	netsnmp_pdu *pdu;
 	oid endOID[MAX_OID_LEN];
 	size_t endOID_len = MAX_OID_LEN;
-	netsnmp_variable_list *vars;
 	int status;
 
 	pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
