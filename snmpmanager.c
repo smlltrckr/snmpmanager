@@ -17,16 +17,21 @@ struct trafficData
 	long *ifInOctets;
 };
 
+
 // Function Declarations
-void findDevice();
-char **deviceNeighbors(char *device);
 void trafficV3(int timeInterval, int numberOfSamples);
 int getTableData(char *objectName);
+int getNext(oid *anOID, size_t anOID_len, int interfc, int count);
 struct trafficData *getOctets(int interfaces);
 
 int main(int argc, char ** argv){
 	int timeInterval, numberOfSamples;
 	char *agentIP, *community;
+	oid anOID[MAX_OID_LEN];
+	size_t anOID_len = MAX_OID_LEN;
+	int interfaces; 
+	// netsnmp_session session, *ss;
+	// netsnmp_pdu *response;
 
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
@@ -68,7 +73,27 @@ int main(int argc, char ** argv){
 		exit(1);
 	}
 
+	// Function Calls
+	printf("Interface\tIpAddress\n");
+	printf("*************************************\n");
+	interfaces = getTableData("ifNumber.0");
+	if (!snmp_parse_oid("ipAdEntAddr", anOID, &anOID_len)) { 
+      snmp_perror("ipAdEntAddr");
+      exit(1); 
+	}
+	getNext(anOID, anOID_len, 1, interfaces);
+
+	printf("\nInterface\tNeghbors\n");
+	printf("*************************************\n");
+	if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID, &anOID_len)) { 
+      snmp_perror("ipNetToMediaNetAddress");
+      exit(1); 
+	}
+	getNext(anOID, anOID_len, 1, interfaces);
+
 	trafficV3(timeInterval, numberOfSamples);
+	// END Function Calls
+
 
 	/* Clean up and close connection */
 	if (response)
@@ -82,31 +107,8 @@ int main(int argc, char ** argv){
 	return 0;
 } // END main()
 
-/*********************Find Devices*******************
-This function finds a device and returns it to a list
-	PRE:
-	POST:
-*/
-void findDevice(){
-	
-	// return 0;
-}
-
-/********************Find Neighbor*******************
-This function finds the neighbor for each device
-	PRE: device identifier (String?)
-	POST: Array of Devices returned
-*/
-char **deviceNeighbors(char *device){
-	char **neighbors;
-	// char *neighbors = (char *)malloc(MAX_IPV4 * sizeof(char**))
-	//char **neighbors = ( Need to allocate
-
-	return neighbors;
-}
-
 /*********************Traffic***********************
-This function finds the rate of traffic on each interface
+This function finds the rate of traffic on each interface and prints the results
 	PRE:
 	POST:
 */
@@ -121,7 +123,7 @@ void trafficV3(int timeInterval, int numberOfSamples){
 	for (int a = 0; a < numberOfSamples; a++)
 	{
 		if(a == 0){
-			printf("Sample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
+			printf("\nSample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
 			printf("**************************************************\n");
 		}
 		start = getTableData("system.sysUpTime.0");
@@ -174,7 +176,7 @@ int getTableData(char *objectName){
 		for (vars = response->variables; vars; vars = vars->next_variable){
 			if (vars->type == ASN_INTEGER || vars->type == ASN_COUNTER || vars->type == ASN_TIMETICKS){
 				return *vars->val.integer;
-			} else {
+			} else{
 				vars = vars->next_variable;
 			}
 		}
@@ -195,6 +197,12 @@ int getTableData(char *objectName){
 	return 0;
 }
 
+/*********************Get Octets*******************
+This function gathers up the In/Out octets of 
+each interface.
+	PRE: 
+	POST:
+*/
 struct trafficData *getOctets(int interfaces){
 	netsnmp_pdu *pdu;
 	oid anOID[MAX_OID_LEN];
@@ -211,69 +219,60 @@ struct trafficData *getOctets(int interfaces){
 	
 	for (int i = 0; i < interfaces; i++)
 	{
-		pdu = snmp_pdu_create(SNMP_MSG_GET);
 		sprintf(interfaceName, "ifInOctets.%d", i + 1);
-		get_node(interfaceName, anOID, &anOID_len);
-		snmp_add_null_var(pdu, anOID, anOID_len);
+		tData->ifInOctets[i] = getTableData(interfaceName);
 
-		status = snmp_synch_response(ss, pdu, &response);
-
-		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
-			// SUCCESS
-			for (vars = response->variables; vars; vars = vars->next_variable){
-				if (vars->type == ASN_COUNTER){
-					tData->ifInOctets[i] = *vars->val.integer;
-				} else {
-					vars = vars->next_variable;
-				}
-			}
-			
-		} else {
-			// FAILURE
-			if (status == STAT_SUCCESS){
-				fprintf(stderr, "Error in packet\n Reason: %s\n",
-					snmp_errstring(response->errstat));
-				exit (-1);
-			} else if (status == STAT_TIMEOUT){
-				fprintf(stderr, "Timeout: No response from %s.\n",
-					session.peername);
-				exit (-2);
-			} else {
-				snmp_sess_perror("snmpmanager", ss);
-			}
-		}
-
-	
-		pdu = snmp_pdu_create(SNMP_MSG_GET);
 		sprintf(interfaceName, "ifOutOctets.%d", i + 1);
-		get_node(interfaceName, anOID, &anOID_len);
+		tData->ifOutOctets[i] = getTableData(interfaceName);
+	}
+	return tData;
+}
+
+
+/*********************Get Next*******************
+This function recursively gets the next node and prints results
+	PRE: 
+	POST:
+*/
+int getNext(oid *anOID, size_t anOID_len, int interfc,int count){
+	netsnmp_pdu *pdu;
+	netsnmp_variable_list *vars;
+	int status;
+	char ipAddress[50];
+
+	if (count != 0)
+	{
+		pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
 		snmp_add_null_var(pdu, anOID, anOID_len);
+
 		status = snmp_synch_response(ss, pdu, &response);
 
 		if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR){
-			// SUCCESS
-			for (vars = response->variables; vars; vars = vars->next_variable){
-				if (vars->type == ASN_COUNTER){
-					tData->ifOutOctets[i] = *vars->val.integer;
-				} else {
-					vars = vars->next_variable;
-				}
+		// SUCCESS: Results are in response
+			vars = response->variables;
+			if (vars->type == ASN_IPADDRESS){
+				// print_variable(vars->name, vars->name_length, vars);
+				
+				snprint_ipaddress (ipAddress, sizeof(ipAddress), vars, NULL, NULL, NULL);
+				printf("%d\t%s\n", interfc, ipAddress);
 			}
-			
+			// TODO need to have some kind of check for Interface neighbors
+			getNext(vars->name, vars->name_length, interfc + 1, count - 1);
+
 		} else {
-			// FAILURE
+		// FAILURE
 			if (status == STAT_SUCCESS){
 				fprintf(stderr, "Error in packet\n Reason: %s\n",
 					snmp_errstring(response->errstat));
-				exit (-1);
+				return (-1);
 			} else if (status == STAT_TIMEOUT){
 				fprintf(stderr, "Timeout: No response from %s.\n",
 					session.peername);
-				exit (-2);
+				return (-2);
 			} else {
 				snmp_sess_perror("snmpmanager", ss);
 			}
 		}
 	}
-	return tData;
+	return 0;	
 }
