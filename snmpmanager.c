@@ -91,7 +91,7 @@ int main(int argc, char ** argv){
       exit(94); 
 	}
 	endOID = getEndOID("ipNetToMediaType");
-	getNext(anOID, anOID_len, 1, endOID, "");
+	getNext(anOID, anOID_len, 1, endOID, NULL);
 
 	trafficV3(timeInterval, numberOfSamples);
 	// END Function Calls
@@ -265,13 +265,22 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 
 			// if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len) == 1) {
 			// printf("ipoctet: %s len: %ld firstOctet: %s len: %ld\n",ipoctet,strlen(ipoctet),firstOctet, strlen(firstOctet) );
-			printf("ipoctet: %s firstOctet: %s\n",ipoctet,firstOctet);
-			if (strcmp(ipoctet,firstOctet) == 0){
-				printf("Equal ipoctet: %s firstOctet: %s\n",ipoctet, firstOctet);
+			// printf("ipoctet: %s firstOctet: %s\n",ipoctet,firstOctet);
+			if (ipoctet == NULL){
 				getNext(vars->name, vars->name_length, interfc, endOID, firstOctet);
 			} else {
-				getNext(vars->name, vars->name_length, interfc + 1, endOID, firstOctet);
-			}		
+				if (strcmp(ipoctet,firstOctet) == 0){
+				// printf("MADEIT!!!!!!!!!!\n");
+				// printf("Equal ipoctet: %s firstOctet: %s\n",ipoctet, firstOctet);
+				// printf("interfc: %d\n", interfc);
+				getNext(vars->name, vars->name_length, interfc, endOID, firstOctet);
+				} else {
+					// printf("NOT EQUAL ipoctet: %s firstOctet: %s\n",ipoctet,firstOctet);
+					getNext(vars->name, vars->name_length, interfc + 1, endOID, firstOctet);
+				}	
+			}
+			// printf("MADEIT!!!!!!!!!!\n");
+				
 		} else {
 		// FAILURE
 			if (status == STAT_SUCCESS){
