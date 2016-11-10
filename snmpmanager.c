@@ -237,7 +237,6 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 	char ipAddress[100];
 	char *ip;
 	char *firstOctet;
-	// ip = strtok(ipAddress, "IpAddress: ");
 	oid anOID2[MAX_OID_LEN];
 
 	if (snmp_oid_compare(anOID, anOID_len, endOID, anOID_len) < 0)
@@ -255,31 +254,18 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 				ip = strtok(ipAddress, "IpAddress: ");
 				printf("%d\t\t%s\n", interfc, ip);
 			}
-			// if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len)) { 
-			//     snmp_perror("ipNetToMediaNetAddress");
-			//     exit(269); 
-			// }
-			// ip = strtok(ip, ".");
-			firstOctet = strtok(ip, ".");
-			// printf("%s\n", firstOctet);
 
-			// if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len) == 1) {
-			// printf("ipoctet: %s len: %ld firstOctet: %s len: %ld\n",ipoctet,strlen(ipoctet),firstOctet, strlen(firstOctet) );
-			// printf("ipoctet: %s firstOctet: %s\n",ipoctet,firstOctet);
+			firstOctet = strtok(ip, ".");
+			
 			if (ipoctet == NULL){
 				getNext(vars->name, vars->name_length, interfc, endOID, firstOctet);
 			} else {
 				if (strcmp(ipoctet,firstOctet) == 0){
-				// printf("MADEIT!!!!!!!!!!\n");
-				// printf("Equal ipoctet: %s firstOctet: %s\n",ipoctet, firstOctet);
-				// printf("interfc: %d\n", interfc);
-				getNext(vars->name, vars->name_length, interfc, endOID, firstOctet);
+					getNext(vars->name, vars->name_length, interfc, endOID, firstOctet);
 				} else {
-					// printf("NOT EQUAL ipoctet: %s firstOctet: %s\n",ipoctet,firstOctet);
 					getNext(vars->name, vars->name_length, interfc + 1, endOID, firstOctet);
 				}	
 			}
-			// printf("MADEIT!!!!!!!!!!\n");
 				
 		} else {
 		// FAILURE
