@@ -11,6 +11,8 @@ CC=gcc
 
 OBJS4=snmpmanager.o
 OBJS5=snmpmanager.o snmpmanager
+OBJS1=backup.o
+OBJS2=backup.o backup
 TARGETS=example-demon snmpdemoapp asyncapp
 
 CFLAGS=-I. `net-snmp-config --cflags`
@@ -34,6 +36,9 @@ addlibs:
 
 snmpmanager: $(OBJS4)
 	$(CC) -o snmpmanager $(OBJS4) $(BUILDLIBS)
+
+backup: $(OBJS1)
+	$(CC) -o backup $(OBJS1) $(BUILDLIBS)
 
 gitmain:
 	git add snmpmanager.c Makefile

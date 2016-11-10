@@ -19,7 +19,7 @@ struct trafficData
 // Function Declarations
 void trafficV3(int timeInterval, int numberOfSamples);
 int getTableData(char *objectName);
-int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID);
+int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipoctet);
 struct trafficData *getOctets(int interfaces);
 oid *getEndOID(char *anOID);
 void printAssignmentHeader();
@@ -81,7 +81,7 @@ int main(int argc, char ** argv){
       exit(85); 
 	}
 	endOID = getEndOID("ipAdEntIfIndex");
-	getNext(anOID, anOID_len, 1, endOID);
+	getNext(anOID, anOID_len, 1, endOID, "");
 
 	printf("\nInterface\tNeghbors\n");
 	printf("**************************************************\n");
@@ -90,7 +90,7 @@ int main(int argc, char ** argv){
       exit(94); 
 	}
 	endOID = getEndOID("ipNetToMediaType");
-	getNext(anOID, anOID_len, 1, endOID);
+	getNext(anOID, anOID_len, 1, endOID, "");
 
 	trafficV3(timeInterval, numberOfSamples);
 	// END Function Calls
@@ -229,13 +229,14 @@ and prints results along the way
 	PRE: 
 	POST:
 */
-int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
+int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipoctet){
 	netsnmp_pdu *pdu, *nextPdu;
 	netsnmp_variable_list *vars;
 	int status;
 	char ipAddress[100];
 	char *ip;
-	ip = strtok(ipAddress, "IpAddress: ");
+	char *firstOctet;
+	// ip = strtok(ipAddress, "IpAddress: ");
 	oid anOID2[MAX_OID_LEN];
 
 	if (snmp_oid_compare(anOID, anOID_len, endOID, anOID_len) < 0)
@@ -253,14 +254,18 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID){
 				ip = strtok(ipAddress, "IpAddress: ");
 				printf("%d\t\t%s\n", interfc, ip);
 			}
-			if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len)) { 
-			    snmp_perror("ipNetToMediaNetAddress");
-			    exit(269); 
-			}
-			if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len) == 1) {
-				getNext(vars->name, vars->name_length, 1, endOID);
+			// if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID2, &anOID_len)) { 
+			//     snmp_perror("ipNetToMediaNetAddress");
+			//     exit(269); 
+			// }
+			firstOctet = strtok(ip, ".");
+			// printf("%s\n", firstOctet);
+
+			// if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len) == 1) {
+			if (ipoctet == firstOctet){
+				getNext(vars->name, vars->name_length, 1, endOID, firstOctet);
 			} else {
-				getNext(vars->name, vars->name_length, interfc + 1, endOID);
+				getNext(vars->name, vars->name_length, interfc + 1, endOID, "");
 			}		
 		} else {
 		// FAILURE
