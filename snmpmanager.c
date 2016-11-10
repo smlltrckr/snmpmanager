@@ -74,7 +74,10 @@ int main(int argc, char ** argv){
 
 	// Function Calls
 	printAssignmentHeader();
-	printf("Interface\tIpAddress\n");
+	printf("**************************************************\n");
+	printf("*                   INTERFACES                   *\n");
+	printf("**************************************************\n");
+	printf("* Number\tIpAddress                        *\n");
 	printf("**************************************************\n");
 	interfaces = getTableData("ifNumber.0");
 	if (!snmp_parse_oid("ipAdEntAddr", anOID, &anOID_len)) { 
@@ -84,7 +87,10 @@ int main(int argc, char ** argv){
 	endOID = getEndOID("ipAdEntIfIndex");
 	getNext(anOID, anOID_len, 1, endOID, "");
 
-	printf("\nInterface\tNeghbors\n");
+	printf("**************************************************\n");
+	printf("*                   NEIGHBORS                    *\n");
+	printf("**************************************************\n");
+	printf("* Interface\tNeghbors                         *\n");
 	printf("**************************************************\n");
 	if (!snmp_parse_oid("ipNetToMediaNetAddress", anOID, &anOID_len)) { 
       snmp_perror("ipNetToMediaNetAddress");
@@ -92,6 +98,10 @@ int main(int argc, char ** argv){
 	}
 	endOID = getEndOID("ipNetToMediaType");
 	getNext(anOID, anOID_len, 1, endOID, NULL);
+
+	printf("**************************************************\n");
+	printf("*                   TRAFFIC                      *\n");
+	printf("**************************************************\n");
 
 	trafficV3(timeInterval, numberOfSamples);
 	// END Function Calls
@@ -125,7 +135,7 @@ void trafficV3(int timeInterval, int numberOfSamples){
 	for (a = 0; a < numberOfSamples; a++)
 	{
 		if(a == 0){
-			printf("\nSample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
+			printf("Sample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
 			printf("**************************************************\n");
 		}
 		start = getTableData("system.sysUpTime.0");
@@ -135,8 +145,8 @@ void trafficV3(int timeInterval, int numberOfSamples){
 		end = getTableData("system.sysUpTime.0");
 		elapsedTime = ((end - start) / 100.0) + timeBetweenPolls;
 		for (b = 0; b < interfaces; b++){
-			double mbpsIn = (currTraffic->ifInOctets[b] - prevTraffic->ifInOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
-			double mbpsOut = (currTraffic->ifOutOctets[b] - prevTraffic->ifOutOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
+			double mbpsIn = (currTraffic->ifInOctets[b] - prevTraffic->ifInOctets[b]) / 8.0 / elapsedTime;
+			double mbpsOut = (currTraffic->ifOutOctets[b] - prevTraffic->ifOutOctets[b]) / 8.0 / elapsedTime;
 			if(b == 0){
 				printf("%d\t%d\t\t%-9.2lf\t%-9.2lf\n",a + 1, b + 1, mbpsIn, mbpsOut);
 			} else {
@@ -210,7 +220,7 @@ struct trafficData *getOctets(int interfaces){
 	struct trafficData *tData;
 	char interfaceName[20];
 	int i;
-	
+
 	tData = (struct trafficData *) malloc(sizeof(struct trafficData) + (sizeof(long) * interfaces)+ (sizeof(long) * interfaces));
 	tData->ifOutOctets = (long *) malloc(sizeof(long) * interfaces);
 	tData->ifInOctets = (long *) malloc(sizeof(long) * interfaces);
@@ -254,7 +264,7 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 			if (vars->type == ASN_IPADDRESS){
 				snprint_ipaddress (ipAddress, sizeof(ipAddress), vars, NULL, NULL, NULL);
 				ip = strtok(ipAddress, "IpAddress: ");
-				printf("%d\t\t%s\n", interfc, ip);
+				printf("  %d\t\t%s\n", interfc, ip);
 			}
 
 			firstOctet = strtok(ip, ".");
@@ -283,7 +293,9 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 				snmp_sess_perror("snmpmanager", ss);
 			}
 		}
-	}
+	} else{
+		printf("\n");
+	}	
 	return 0;	
 }
 
