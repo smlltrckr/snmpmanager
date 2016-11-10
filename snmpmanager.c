@@ -32,6 +32,7 @@ int main(int argc, char ** argv){
 	size_t anOID_len = MAX_OID_LEN;
 	int interfaces;
 
+	//Sets default arguments if none are sest
 	if (argc < 4){
 		printf("USAGE: timeInterval(Seconds) numberOfSamples agentIP community\n");
 		// Default Values
@@ -121,8 +122,8 @@ int main(int argc, char ** argv){
 
 /*********************Traffic***********************
 This function finds the rate of traffic on each interface and prints the results
-	PRE:
-	POST:
+	PRE: timeInterval time between samples, numberOfSamples int number of samples to take
+	POST: none
 */
 void trafficV3(int timeInterval, int numberOfSamples){
 	int interfaces = getTableData("ifNumber.0"); // Number of interfaces
@@ -168,8 +169,8 @@ void trafficV3(int timeInterval, int numberOfSamples){
 
 /*********************Get Table Data*******************
 This function gets int data from the table.
-	PRE:
-	POST:
+	PRE: objectName char* OID
+	POST: returns 0 upon success
 */
 int getTableData(char *objectName){
 	netsnmp_pdu *pdu;
@@ -213,8 +214,8 @@ int getTableData(char *objectName){
 /*********************Get Octets*******************
 This function gathers up the In/Out octets of 
 each interface.
-	PRE: 
-	POST:
+	PRE: interfaces int interfaces found
+	POST: struct trafficData
 */
 struct trafficData *getOctets(int interfaces){
 	struct trafficData *tData;
@@ -236,11 +237,12 @@ struct trafficData *getOctets(int interfaces){
 	return tData;
 }
 
-/*********************Get Next*******************
+/*********************Get Next******************************
 This function recursively gets the next node
 and prints results along the way
-	PRE: 
-	POST:
+	PRE: OID, OID length, Interface, previous OID,
+		 agent IP, pdu, next pdu
+	POST: 0 upon success
 */
 int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipoctet){
 	netsnmp_pdu *pdu, *nextPdu;
@@ -301,8 +303,8 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 
 /*********************Get End OID*******************
 This function gets the next node.
-	PRE: 
-	POST:
+	PRE: current OID
+	POST: oid found and returned
 */
 oid *getEndOID(char *anOID){
 	netsnmp_pdu *pdu;
@@ -343,8 +345,8 @@ oid *getEndOID(char *anOID){
 
 /*********************printAssignmentHeader*******************
 This function prints the assignment header.
-	PRE: 
-	POST:
+	PRE: none
+	POST: none
 */
 void printAssignmentHeader(){
 	printf("**************************************************\n");
