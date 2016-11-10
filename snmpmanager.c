@@ -145,8 +145,8 @@ void trafficV3(int timeInterval, int numberOfSamples){
 		end = getTableData("system.sysUpTime.0");
 		elapsedTime = ((end - start) / 100.0) + timeBetweenPolls;
 		for (b = 0; b < interfaces; b++){
-			double mbpsIn = (currTraffic->ifInOctets[b] - prevTraffic->ifInOctets[b]) * 8.0 / elapsedTime;
-			double mbpsOut = (currTraffic->ifOutOctets[b] - prevTraffic->ifOutOctets[b]) * 8.0 / elapsedTime;
+			double mbpsIn = (currTraffic->ifInOctets[b] - prevTraffic->ifInOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
+			double mbpsOut = (currTraffic->ifOutOctets[b] - prevTraffic->ifOutOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
 			if(b == 0){
 				printf("%d\t%d\t\t%-9.2lf\t%-9.2lf\n",a + 1, b + 1, mbpsIn, mbpsOut);
 			} else {
