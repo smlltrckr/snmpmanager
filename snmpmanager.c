@@ -120,8 +120,9 @@ void trafficV3(int timeInterval, int numberOfSamples){
 	double elapsedTime;
 	struct trafficData *prevTraffic, *currTraffic;
 	int timeBetweenPolls = 5;
+	int a, b;
 
-	for (int a = 0; a < numberOfSamples; a++)
+	for (a = 0; a < numberOfSamples; a++)
 	{
 		if(a == 0){
 			printf("\nSample\tInterface\tIn (Mbps)\tOut (Mbps)\n");
@@ -133,7 +134,7 @@ void trafficV3(int timeInterval, int numberOfSamples){
 		currTraffic = getOctets(interfaces);
 		end = getTableData("system.sysUpTime.0");
 		elapsedTime = ((end - start) / 100.0) + timeBetweenPolls;
-		for (int b = 0; b < interfaces; b++){
+		for (b = 0; b < interfaces; b++){
 			double mbpsIn = (currTraffic->ifInOctets[b] - prevTraffic->ifInOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
 			double mbpsOut = (currTraffic->ifOutOctets[b] - prevTraffic->ifOutOctets[b]) * 8.0 / 1000000.0 / elapsedTime;
 			if(b == 0){
@@ -208,12 +209,13 @@ each interface.
 struct trafficData *getOctets(int interfaces){
 	struct trafficData *tData;
 	char interfaceName[20];
-
+	int i;
+	
 	tData = (struct trafficData *) malloc(sizeof(struct trafficData) + (sizeof(long) * interfaces)+ (sizeof(long) * interfaces));
 	tData->ifOutOctets = (long *) malloc(sizeof(long) * interfaces);
 	tData->ifInOctets = (long *) malloc(sizeof(long) * interfaces);
 	
-	for (int i = 0; i < interfaces; i++)
+	for (i = 0; i < interfaces; i++)
 	{
 		sprintf(interfaceName, "ifInOctets.%d", i + 1);
 		tData->ifInOctets[i] = getTableData(interfaceName);
