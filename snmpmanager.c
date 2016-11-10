@@ -2,6 +2,7 @@
 #include <net-snmp/net-snmp-includes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <math.h>
 
@@ -258,14 +259,18 @@ int getNext(oid *anOID, size_t anOID_len, int interfc, oid *endOID, char *ipocte
 			//     snmp_perror("ipNetToMediaNetAddress");
 			//     exit(269); 
 			// }
+			// ip = strtok(ip, ".");
 			firstOctet = strtok(ip, ".");
 			// printf("%s\n", firstOctet);
 
 			// if (snmp_oid_compare(anOID, anOID_len, anOID2, anOID_len) == 1) {
-			if (ipoctet == firstOctet){
-				getNext(vars->name, vars->name_length, 1, endOID, firstOctet);
+			// printf("ipoctet: %s len: %ld firstOctet: %s len: %ld\n",ipoctet,strlen(ipoctet),firstOctet, strlen(firstOctet) );
+			printf("ipoctet: %s firstOctet: %s\n",ipoctet,firstOctet);
+			if (strcmp(ipoctet,firstOctet) == 0){
+				printf("Equal ipoctet: %s firstOctet: %s\n",ipoctet, firstOctet);
+				getNext(vars->name, vars->name_length, interfc, endOID, firstOctet);
 			} else {
-				getNext(vars->name, vars->name_length, interfc + 1, endOID, "");
+				getNext(vars->name, vars->name_length, interfc + 1, endOID, firstOctet);
 			}		
 		} else {
 		// FAILURE
